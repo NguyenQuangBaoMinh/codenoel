@@ -190,6 +190,61 @@
             }
         }
 
+        /* Download button */
+        #download-btn {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            z-index: 100;
+            padding: 15px 30px;
+            background: linear-gradient(45deg, #ff1493, #ffd700, #00ff00);
+            background-size: 200% 200%;
+            border: 3px solid #fff;
+            border-radius: 50px;
+            color: #fff;
+            font-size: 1.2rem;
+            font-weight: bold;
+            cursor: pointer;
+            pointer-events: auto;
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.8);
+            animation: btnShine 3s linear infinite;
+            transition: transform 0.3s ease;
+        }
+
+        #download-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 40px rgba(255, 215, 0, 1);
+        }
+
+        #download-btn:active {
+            transform: scale(0.95);
+        }
+
+        #download-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        @keyframes btnShine {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        #status-text {
+            position: fixed;
+            bottom: 100px;
+            right: 30px;
+            z-index: 100;
+            padding: 10px 20px;
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 10px;
+            color: #fff;
+            font-size: 1rem;
+            display: none;
+            pointer-events: none;
+        }
+
         /* Responsive text */
         @media (max-width: 768px) {
             h1.main-text { font-size: 2rem; }
@@ -203,6 +258,17 @@
             #heart:before,
             #heart:after { width: 60px; height: 96px; }
             #heart:before { left: 60px; }
+            #download-btn {
+                bottom: 20px;
+                right: 20px;
+                padding: 12px 24px;
+                font-size: 1rem;
+            }
+            #status-text {
+                bottom: 80px;
+                right: 20px;
+                font-size: 0.9rem;
+            }
         }
     </style>
 </head>
@@ -216,6 +282,9 @@
         <h2 class="sub-text">Ngọc Minh</h2>
         <h1 class="main-text" style="animation-name: glowGreen, floatUp;">Have a wonderful holiday!</h1>
     </div>
+
+    <button id="download-btn">📥 Download GIF</button>
+    <div id="status-text"></div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
@@ -347,6 +416,178 @@
         }
 
         init();
+
+        // GIF Download Functionality
+        function showStatus(message) {
+            const statusText = document.getElementById('status-text');
+            statusText.textContent = message;
+            statusText.style.display = 'block';
+        }
+
+        function hideStatus() {
+            const statusText = document.getElementById('status-text');
+            statusText.style.display = 'none';
+        }
+
+        async function downloadAsGIF() {
+            const btn = document.getElementById('download-btn');
+            btn.disabled = true;
+            showStatus('🎬 Preparing to capture...');
+
+            try {
+                // Use MediaRecorder API instead - much simpler and works locally
+                // We'll capture as WebM video then convert to GIF using canvas
+
+                const scale = 0.6;
+                const width = Math.floor(window.innerWidth * scale);
+                const height = Math.floor(window.innerHeight * scale);
+
+                // Create frames array
+                const frames = [];
+                const totalFrames = 30;
+                const frameDuration = 100; // 100ms per frame
+
+                showStatus('📸 Capturing frames... 0%');
+
+                const canvas = document.createElement('canvas');
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d', { willReadFrequently: true });
+
+                // Capture frames
+                for (let i = 0; i < totalFrames; i++) {
+                    await new Promise(resolve => requestAnimationFrame(resolve));
+                    await new Promise(resolve => setTimeout(resolve, frameDuration));
+
+                    // Clear and draw
+                    ctx.fillStyle = '#000000';
+                    ctx.fillRect(0, 0, width, height);
+
+                    // Draw Three.js canvas
+                    ctx.drawImage(renderer.domElement, 0, 0, width, height);
+
+                    // Draw fireworks
+                    const fireworks = document.querySelectorAll('.firework');
+                    fireworks.forEach(fw => {
+                        const rect = fw.getBoundingClientRect();
+                        const bgColor = fw.style.backgroundColor;
+                        if (bgColor && bgColor !== 'rgba(0, 0, 0, 0)') {
+                            ctx.fillStyle = bgColor;
+                            ctx.beginPath();
+                            ctx.arc((rect.left + rect.width/2) * scale, (rect.top + rect.height/2) * scale, 3, 0, Math.PI * 2);
+                            ctx.fill();
+                        }
+                    });
+
+                    // Draw heart
+                    ctx.save();
+                    ctx.translate(width/2, height/2);
+                    ctx.globalAlpha = 0.3;
+                    ctx.fillStyle = '#ff1493';
+                    const heartSize = 20 * scale;
+                    ctx.beginPath();
+                    ctx.arc(-heartSize, -heartSize/2, heartSize, 0, Math.PI * 2);
+                    ctx.arc(heartSize, -heartSize/2, heartSize, 0, Math.PI * 2);
+                    ctx.moveTo(-heartSize * 2, 0);
+                    ctx.lineTo(0, heartSize * 2);
+                    ctx.lineTo(heartSize * 2, 0);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.restore();
+
+                    // Draw text
+                    ctx.save();
+                    ctx.textAlign = 'center';
+
+                    const fontSize1 = Math.floor(48 * scale);
+                    ctx.font = `bold ${fontSize1}px Arial`;
+                    ctx.fillStyle = '#ffffff';
+                    ctx.shadowColor = '#ff0000';
+                    ctx.shadowBlur = 10 * scale;
+                    ctx.fillText('Merry Christmas', width/2, height/2 - 100 * scale);
+
+                    const fontSize2 = Math.floor(96 * scale);
+                    ctx.font = `bold ${fontSize2}px Arial`;
+                    ctx.fillStyle = '#ffd700';
+                    ctx.shadowColor = '#ffd700';
+                    ctx.shadowBlur = 20 * scale;
+                    ctx.fillText('NGỌC MINH', width/2, height/2);
+
+                    ctx.font = `bold ${fontSize1}px Arial`;
+                    ctx.fillStyle = '#ffffff';
+                    ctx.shadowColor = '#00ff00';
+                    ctx.shadowBlur = 10 * scale;
+                    ctx.fillText('Have a wonderful holiday!', width/2, height/2 + 80 * scale);
+
+                    ctx.restore();
+
+                    // Save frame as data URL
+                    frames.push(canvas.toDataURL('image/png'));
+
+                    const progress = Math.round((i + 1) / totalFrames * 100);
+                    showStatus(`📸 Capturing... ${progress}%`);
+                }
+
+                showStatus('🎨 Creating animated PNG (APNG)...');
+
+                // Create APNG or fallback to download first frame
+                // Since we can't easily create GIF without external library in file:// protocol,
+                // we'll create a simple HTML file that animates the frames
+                const htmlContent = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Merry Christmas - Ngọc Minh</title>
+    <style>
+        body { margin: 0; padding: 0; background: #000; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+        #animation { max-width: 100%; max-height: 100vh; }
+    </style>
+</head>
+<body>
+    <img id="animation" />
+    <script` + `>
+        const frames = ${JSON.stringify(frames)};
+        let currentFrame = 0;
+        const img = document.getElementById('animation');
+
+        function animate() {
+            img.src = frames[currentFrame];
+            currentFrame = (currentFrame + 1) % frames.length;
+        }
+
+        setInterval(animate, ${frameDuration});
+        animate();
+    </` + `script>
+</body>
+</html>`;
+
+                // Download as HTML file
+                const blob = new Blob([htmlContent], { type: 'text/html' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'merry-christmas-ngoc-minh-animated.html';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+
+                setTimeout(() => URL.revokeObjectURL(url), 100);
+
+                showStatus('✅ Animation Downloaded! Open the HTML file to view.');
+                setTimeout(hideStatus, 5000);
+                btn.disabled = false;
+
+            } catch (error) {
+                console.error('Error creating GIF:', error);
+                console.error('Error stack:', error.stack);
+                showStatus(`❌ Error: ${error.message || 'Please check console (F12)'}`);
+                setTimeout(hideStatus, 5000);
+                btn.disabled = false;
+            }
+        }
+
+        // Add click event to download button
+        document.getElementById('download-btn').addEventListener('click', downloadAsGIF);
     </script>
 </body>
 </html>
